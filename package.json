@@ -1,0 +1,36 @@
+{
+  "name": "akca-api",
+  "version": "0.2.0",
+  "description": "Akca Network API - Backend for NFT-gated VPN access",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "init-db": "node src/db/init.js"
+  },
+  "keywords": [
+    "vpn",
+    "solana",
+    "nft",
+    "api"
+  ],
+  "author": "Akca Network",
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/js": "^0.19.4",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.87.6",
+    "better-sqlite3": "^9.2.2",
+    "bs58": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "tweetnacl": "^1.0.3",
+    "uuid": "^9.0.1",
+    "serverless-http": "^3.2.0"
+  }
+}

@@ -45,7 +45,7 @@ app.set('trust proxy', true);
 // CORS Configuration - Whitelist allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:4451', 'http://localhost:5173', 'https://auth.akca.network', 'https://api.akca.network', 'https://app.akca.network', 'https://admin.akca.network'];
+  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:4451', 'http://localhost:5173', 'https://auth.akca.network', 'https://api.akca.network', 'https://app.akca.network', 'https://admin.akca.network', 'https://d2idgva3gku1n8.cloudfront.net'];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -59,7 +59,13 @@ app.use(cors({
       return callback(null, true);
     }
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in allowed list
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1;
+
+    // Also allow CloudFront domains (*.cloudfront.net)
+    const isCloudFront = origin.endsWith('.cloudfront.net');
+
+    if (isAllowed || isCloudFront) {
       console.log('[CORS] ✅ Origin allowed:', origin);
       callback(null, true);
     } else {

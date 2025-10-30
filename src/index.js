@@ -568,7 +568,7 @@ app.post('/purchase/init', paymentLimiter, async (req, res) => {
     db.prepare(`
       INSERT INTO payments (id, wallet, plan, amount_sol, amount_usdt, amount_usd, status, ip_address, created_at)
       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-    `).run(reference, wallet, planId, plan.total_sol, 0, plan.price_usd, clientIp, now);
+    `).run(reference, wallet, planId, plan.price_sol, 0, plan.price_usd, clientIp, now);
 
     // Log audit event
     logAuditEvent(db, wallet, 'payment_init', clientIp, { plan: planId, amount: plan.price_usd });

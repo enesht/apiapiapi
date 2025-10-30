@@ -164,9 +164,24 @@ app.post('/auth/login', authLimiter, (req, res) => {
  */
 app.post('/auth/create-session', authLimiter, async (req, res) => {
   try {
+    // ✅ YENİ: Request body'yi logla
+    console.log('[/auth/create-session] Incoming request:', {
+      walletAddress: req.body.walletAddress,
+      message: req.body.message ? 'present' : 'missing',
+      signature: req.body.signature ? 'present' : 'missing',
+      headers: {
+        'content-type': req.headers['content-type'],
+        'accept': req.headers['accept'],
+        'origin': req.headers['origin']
+      }
+    });
+
     const { walletAddress, message, signature } = req.body;
 
     if (!walletAddress || !message || !signature) {
+      console.log('[/auth/create-session] Missing fields:', {
+        walletAddress, hasMessage: !!message, hasSignature: !!signature
+      });
       return res.status(400).json({
         ok: false,
         error: 'Missing required fields: walletAddress, message, signature',
@@ -174,26 +189,32 @@ app.post('/auth/create-session', authLimiter, async (req, res) => {
     }
 
     // Verify signature
+    console.log('[/auth/create-session] Verifying signature for wallet:', walletAddress);
     const isValid = verifySignature(message, signature, walletAddress);
 
     if (!isValid) {
+      console.log('[/auth/create-session] Invalid signature for wallet:', walletAddress);
       return res.status(401).json({
         ok: false,
         error: 'Invalid signature',
       });
     }
 
+    console.log('[/auth/create-session] Signature verified, fetching NFTs...');
+
     // Get user's NFTs (with fallback to empty array on error)
     let nfts = [];
     try {
       nfts = await getWalletNFTs(walletAddress);
+      console.log('[/auth/create-session] NFTs fetched:', nfts.length);
     } catch (nftError) {
-      console.error('Error fetching NFTs, continuing with empty array:', nftError.message);
+      console.error('[/auth/create-session] Error fetching NFTs, continuing with empty array:', nftError.message);
       // Continue with empty NFT array - user can still authenticate
     }
 
     // Generate JWT token
     const token = generateToken(walletAddress, nfts);
+    console.log('[/auth/create-session] Token generated successfully');
 
     // Log audit event
     const db = getDatabase();
@@ -203,6 +224,7 @@ app.post('/auth/create-session', authLimiter, async (req, res) => {
       source: 'web',
     });
 
+    console.log('[/auth/create-session] Success! Returning response');
     res.json({
       ok: true,
       token,
@@ -210,10 +232,18 @@ app.post('/auth/create-session', authLimiter, async (req, res) => {
       nfts_count: nfts.length,
     });
   } catch (error) {
-    console.error('Create session error:', error);
+    // ✅ YENİ: Detaylı error logging ve JSON response
+    console.error('[/auth/create-session] ERROR:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+
+    // ✅ YENİ: Her zaman JSON döndür (HTML değil)
     res.status(500).json({
       ok: false,
-      error: error.message,
+      error: 'internal',
+      detail: error.message
     });
   }
 });

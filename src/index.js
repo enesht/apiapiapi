@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { v4 as uuidv4 } from 'uuid';
 import { readFileSync } from 'fs';
@@ -42,42 +41,65 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy - CloudFront/Load Balancer için gerekli
 app.set('trust proxy', true);
 
-// CORS Configuration - Whitelist allowed origins
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:4451', 'http://localhost:5173', 'https://auth.akca.network', 'https://api.akca.network', 'https://app.akca.network', 'https://admin.akca.network', 'https://d2idgva3gku1n8.cloudfront.net'];
+// CORS Configuration - ALL settings from .env
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '';
+const ALLOW_CLOUDFRONT = process.env.ALLOW_CLOUDFRONT === 'true';
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Log CORS check
-    console.log('[CORS] Incoming origin:', origin);
+if (!ALLOWED_ORIGINS) {
+  console.warn('⚠️  WARNING: ALLOWED_ORIGINS not set in .env - CORS will block all requests!');
+}
+
+const allowedOrigins = ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(o => o);
+
+console.log('🔒 CORS Configuration:');
+console.log('   Allowed Origins:', allowedOrigins);
+console.log('   Allow CloudFront:', ALLOW_CLOUDFRONT);
+
+// Custom CORS middleware to avoid duplicate headers
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  console.log('[CORS] Incoming origin:', origin);
+
+  // Allow requests with no origin (like mobile apps or curl requests)
+  if (!origin) {
+    console.log('[CORS] ✅ No origin header - allowing request');
+    return next();
+  }
+
+  // Check if origin is in allowed list
+  const isAllowed = allowedOrigins.indexOf(origin) !== -1;
+
+  // Check if CloudFront domains are allowed (*.cloudfront.net)
+  const isCloudFront = ALLOW_CLOUDFRONT && origin.endsWith('.cloudfront.net');
+
+  if (isAllowed || isCloudFront) {
+    console.log('[CORS] ✅ Origin allowed:', origin);
+
+    // Set CORS headers manually (only if not already set)
+    if (!res.getHeader('Access-Control-Allow-Origin')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Token, X-Admin-Key');
+    }
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
+    next();
+  } else {
+    console.log('[CORS] ❌ Origin NOT allowed:', origin);
     console.log('[CORS] Allowed origins:', allowedOrigins);
-
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('[CORS] ✅ No origin header - allowing request');
-      return callback(null, true);
-    }
-
-    // Check if origin is in allowed list
-    const isAllowed = allowedOrigins.indexOf(origin) !== -1;
-
-    // Also allow CloudFront domains (*.cloudfront.net)
-    const isCloudFront = origin.endsWith('.cloudfront.net');
-
-    if (isAllowed || isCloudFront) {
-      console.log('[CORS] ✅ Origin allowed:', origin);
-      callback(null, true);
-    } else {
-      console.log('[CORS] ❌ Origin NOT allowed:', origin);
-      console.log('[CORS] Available origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token', 'X-Admin-Key']
-}));
+    console.log('[CORS] CloudFront allowed:', ALLOW_CLOUDFRONT);
+    res.status(403).json({
+      ok: false,
+      error: 'Not allowed by CORS'
+    });
+  }
+});
 
 // Body parser with size limit
 app.use(express.json({ limit: '100kb' }));

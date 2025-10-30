@@ -183,8 +183,14 @@ app.post('/auth/create-session', authLimiter, async (req, res) => {
       });
     }
 
-    // Get user's NFTs
-    const nfts = await getWalletNFTs(walletAddress);
+    // Get user's NFTs (with fallback to empty array on error)
+    let nfts = [];
+    try {
+      nfts = await getWalletNFTs(walletAddress);
+    } catch (nftError) {
+      console.error('Error fetching NFTs, continuing with empty array:', nftError.message);
+      // Continue with empty NFT array - user can still authenticate
+    }
 
     // Generate JWT token
     const token = generateToken(walletAddress, nfts);

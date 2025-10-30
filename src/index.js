@@ -49,11 +49,22 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Log CORS check
+    console.log('[CORS] Incoming origin:', origin);
+    console.log('[CORS] Allowed origins:', allowedOrigins);
+
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('[CORS] ✅ No origin header - allowing request');
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('[CORS] ✅ Origin allowed:', origin);
       callback(null, true);
     } else {
+      console.log('[CORS] ❌ Origin NOT allowed:', origin);
+      console.log('[CORS] Available origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
